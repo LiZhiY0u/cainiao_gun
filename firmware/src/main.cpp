@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "combo/BleCombo.h"
+#include "MouseMotionFilter.h"
 #include <Adafruit_NeoPixel.h>
 
 #include "I2Cdev.h"
@@ -94,7 +95,11 @@ int num1 = 0; // 电磁后坐计数
 int num2 = 0; // RGB计数
 
 uint8_t moveX = 0, moveY = 0, IO5 = 0, IO18 = 0, IO16 = 0, IO17 = 0, pat = 0;
-int16_t mouseX = 0, mouseY = 0;
+constexpr float MOUSE_SENSITIVITY = 4.0f / 250.0f;
+MouseMotionFilter mouseMotion(MOUSE_SENSITIVITY);
+int8_t mouseX = 0, mouseY = 0;
+
+#define MOUSE_DEBUG 0
 uint8_t cnt1 = 1, cnt2 = 1, num_sw = 1, num_key1 = 1, num_key2 = 1, num_key3 = 1, num_en1 = 1, num_en2 = 1;
 
 // 触摸消抖
@@ -145,41 +150,16 @@ static bool T33()
 }
 
 // mpu6050_DMP滤波
-void mpu_DMP()
+bool mpu_DMP()
 {
-    // if programming failed, don't try to do anything
     if (!dmpReady)
-        return;
-    // read a packet from FIFO
-    if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer))
-    { // Get the Latest packet
+        return false;
 
-#ifdef OUTPUT_READABLE_YAWPITCHROLL
-      // display Euler angles in degrees
-        // mpu.dmpGetQuaternion(&q, fifoBuffer);
-        // mpu.dmpGetGravity(&gravity, &q);
-        // mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
-        mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-        // Serial.print("ypr\t");
-        // Serial.print(ypr[0] * 180/M_PI);
-        // Serial.print("\t");
-        // Serial.print(ypr[1] * 180/M_PI);
-        // Serial.print("\t");
-        // Serial.println(ypr[2] * 180/M_PI);
+    if (!mpu.dmpGetCurrentFIFOPacket(fifoBuffer))
+        return false;
 
-        // Serial.print("ypr\t");
-        // Serial.print(gy/150);
-        // Serial.print("\t");
-        // Serial.print(ypr[2] * 180/M_PI);
-        // Serial.print("\t");
-        // Serial.println(gz/150);
-        delay(9);
-
-        // mouseX=-gz/150;
-        // mouseY=-gy/150;
-
-#endif
-    }
+    mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+    return true;
 }
 
 // 模式切换
@@ -333,18 +313,10 @@ void encoder()
 }
 
 // 鼠标移动
-void mouse_Move(int16_t _mouseX, int16_t _mouseY)
+void mouse_Move(int8_t x, int8_t y)
 {
-    //   if(Keyboard.isConnected()) {
-    // if(mouseX!=0|mouseY!=0){
-    delay(3);
-    for (uint8_t _i = 0; _i < 4; _i++)
-    {
-        Mouse.move(_mouseX, -_mouseY);
-    }
-
-    // }
-    //   }
+    if (x != 0 || y != 0)
+        Mouse.move(x, y);
 }
 
 // 鼠标中键
@@ -475,22 +447,15 @@ void key_3()
 // 参数打印
 void _print()
 {
-    Serial.println(
-        // "moveX:"+String(moveX)+
-        // "  moveY:"+String(moveY)+
-        "  mouseX:" + String(mouseX) +
-        "  mouseY:" + String(mouseY)
-        // "  1:"+String(digitalRead(12))+
-        // "  2:"+String(digitalRead(32))+
-        // "  3:"+String(digitalRead(33))+
-        // "  4:"+String(digitalRead(35))+
-        // "  5:"+String(digitalRead(17))+
-        // "  6:"+String(digitalRead(16))+
-        // "  7:"+String(digitalRead(18))+
-        // "  8:"+String(digitalRead(5))+
-        // "  sw:"+String(digitalRead(Key_sw))
-        // "  pat:"+String(pat)
-    );
+#if MOUSE_DEBUG
+    static uint32_t lastPrintMs = 0;
+    const uint32_t now = millis();
+    if (now - lastPrintMs < 500)
+        return;
+
+    lastPrintMs = now;
+    Serial.printf("gy:%d gz:%d mouseX:%d mouseY:%d\n", gy, gz, mouseX, mouseY);
+#endif
 }
 
 // RGB功能实现
@@ -671,12 +636,14 @@ void loop()
 {
     if (KeyBoard.isConnected())
     {
-        // pattern_ctrl();
-        pat = 1;
-
-        mpu_DMP();
-        pattern();
-        mouse_Move(mouseX, mouseY);
+        if (mpu_DMP())
+        {
+            const MouseDelta delta = mouseMotion.update(gy, gz);
+            mouseX = delta.x;
+            mouseY = delta.y;
+            mouse_Move(mouseX, mouseY);
+            _print();
+        }
 
         // 原始程序..............................................................................
 
@@ -687,7 +654,6 @@ void loop()
         // key_1();
         // key_2();
         // key_3();
-        _print();
         // moveX=0,moveY=0,mouseX=0,mouseY=0,IO5=0,IO18=0,IO16=0,IO17=0;
         // delay(1);
         //..............................................................................
@@ -815,5 +781,11 @@ void loop()
 
         // Serial.println("Waiting 2 seconds...");
         // delay(2000);
+    }
+    else
+    {
+        mouseMotion.reset();
+        mouseX = 0;
+        mouseY = 0;
     }
 }
