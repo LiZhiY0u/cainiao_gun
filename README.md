@@ -1,92 +1,47 @@
 # cainiao_gun
->传统FPS（✗）
 
->电子FPS（✓）
+基于 ESP32-WROOM-32E 和 MPU6050 的 BLE 体感游戏控制器，可模拟键盘和鼠标输入。
 
-主控：esp32-woroom-32E
+## 工程结构
 
-平台：vscode-platformio
+- `firmware/`：唯一正式固件，使用 VS Code + PlatformIO 开发和构建。
+- `examples/`：开发过程中的功能实验和硬件验证工程，不作为正式发布固件。
+- `images/`：项目图片。
 
+## 构建正式固件
 
-自制体感手柄，赛博FPS打枪神器，取名cainiao_gun。
+安装 PlatformIO 后，在仓库根目录运行：
 
-## 文件夹介绍
-- examples：开发过程中的例程，大部分已验证。
+```powershell
+pio run -d firmware
+```
 
-- software：源码，能用，但屎山。
+需要烧录时运行：
 
-- hardware：硬件原理图及pcb（空）
+```powershell
+pio run -d firmware -t upload
+```
 
-- images：图
+正式固件目标板为 `esp32dev`，使用 Arduino framework。依赖由 `firmware/platformio.ini` 管理。
 
-# 已完成功能
+## 已实现功能
 
-### **2023/3/30**
+- 摇杆和体感控制模式
+- BLE 键盘与鼠标组合设备
+- MPU6050 运动数据读取
+- 基本按键映射
+- RGB 灯效
+- 电磁后坐控制
 
-- 代码实现:
-        
-        RGB
+## BLE Combo
 
-- 新增例程：
-        
-        RGB_test1//完整版
-        RGB_test2//使用部分
-        PWM_test1//电磁铁接mos导通测试
+正式固件将 BLE 键盘和鼠标组合实现内置在 `firmware/src/combo/`，构建时不需要单独复制该库。
 
-### **2023/3/27**
+参考项目：
 
-- 代码实现：
-        
-        1、摇杆 / 体感双模式（对应速度和加速度）
+- [ESP32-BLE-Combo](https://github.com/ServAlex/ESP32-BLE-Combo)
+- [ESP32-BLE-Mouse](https://github.com/T-vK/ESP32-BLE-Mouse)
 
-        2、基本键位的映射（模拟键盘和鼠标）
+## License
 
-        3、蓝牙连接（低功耗ble）
-
-        4、mpu6050_DMP滤波
-
-### **2023/3/24**
-
-- 新增例程
-
-## 后续更新
-
-- 代码优化
-
-- 屏幕
-
-- 陀螺仪误差补偿
-
-- 更多键位映射
-
-- 电磁后坐（手柄有后坐，打枪更快乐）
-
-- freertos（彻底解决delay与ble速率的矛盾）
-
-- oop
-
-- pcb
-
-- 模型
-
-。。。。。
-
-
-## 说明
-
-由于ble_keyboard和ble_mouse共存会出bug，因此需要导入第三方库combo。
-
-*****
-*****
-
-## 参考：
-
-https://github.com/ServAlex/ESP32-BLE-Combo
-
-https://github.com/T-vK/ESP32-BLE-Mouse
-
-https://mc.dfrobot.com.cn/thread-308719-1-1.html
-
-https://www.yiboard.com/forum.php?mod=viewthread&tid=1195&highlight=%E5%8A%A0%E9%80%9F%E5%BA%A6
-
-# *make by xiaocainiao* 
+本项目使用仓库中 [LICENSE](LICENSE) 所述许可证。
