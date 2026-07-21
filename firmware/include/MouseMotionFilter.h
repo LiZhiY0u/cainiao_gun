@@ -12,15 +12,16 @@ struct MouseDelta
 class MouseMotionFilter
 {
 public:
-    explicit MouseMotionFilter(float sensitivity)
-        : sensitivity_(sensitivity), residualX_(0.0f), residualY_(0.0f)
+    MouseMotionFilter(float sensitivityX, float sensitivityY)
+        : sensitivityX_(sensitivityX), sensitivityY_(sensitivityY),
+          residualX_(0.0f), residualY_(0.0f)
     {
     }
 
     MouseDelta update(int16_t gy, int16_t gz)
     {
-        residualX_ += -static_cast<float>(gz) * sensitivity_;
-        residualY_ += static_cast<float>(gy) * sensitivity_;
+        residualX_ += -static_cast<float>(gz) * sensitivityX_;
+        residualY_ += -static_cast<float>(gy) * sensitivityY_;
 
         const int32_t wholeX = static_cast<int32_t>(residualX_);
         const int32_t wholeY = static_cast<int32_t>(residualY_);
@@ -46,7 +47,8 @@ private:
         return static_cast<int8_t>(value);
     }
 
-    float sensitivity_;
+    float sensitivityX_;
+    float sensitivityY_;
     float residualX_;
     float residualY_;
 };

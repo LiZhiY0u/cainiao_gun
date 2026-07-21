@@ -95,8 +95,9 @@ int num1 = 0; // 电磁后坐计数
 int num2 = 0; // RGB计数
 
 uint8_t moveX = 0, moveY = 0, IO5 = 0, IO18 = 0, IO16 = 0, IO17 = 0, pat = 0;
-constexpr float MOUSE_SENSITIVITY = 4.0f / 250.0f;
-MouseMotionFilter mouseMotion(MOUSE_SENSITIVITY);
+constexpr float MOUSE_SENSITIVITY_X = 4.0f / 250.0f;
+constexpr float MOUSE_SENSITIVITY_Y = 8.0f / 250.0f;
+MouseMotionFilter mouseMotion(MOUSE_SENSITIVITY_X, MOUSE_SENSITIVITY_Y);
 int8_t mouseX = 0, mouseY = 0;
 
 #define MOUSE_DEBUG 0
