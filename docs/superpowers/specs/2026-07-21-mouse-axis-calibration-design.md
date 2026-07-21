@@ -1,41 +1,41 @@
-# Mouse Axis Calibration Design
+# 鼠标轴向校准设计
 
-## Context
+## 背景
 
-The smoothed firmware converts MPU6050 `gz` samples to horizontal HID motion and `gy` samples to vertical HID motion. Device testing shows that horizontal movement is acceptable, while vertical movement is reversed and travels about half as far for a comparable gesture.
+平滑处理后的固件将 MPU6050 的 `gz` 采样转换为水平 HID 位移，将 `gy` 采样转换为垂直 HID 位移。实机测试表明，水平移动已经可接受，但垂直方向相反，并且在相近动作幅度下，垂直移动距离约为水平的一半。
 
-Code inspection confirms that both axes currently use the same gain. The direction matches the legacy firmware's final HID output, but that legacy mapping does not match the physical orientation of this device.
+代码核查确认，目前两个轴使用相同增益。当前方向与旧固件最终发送给 HID 的方向一致，但旧映射并不符合这台设备的实际安装方向。
 
-## Selected Design
+## 选定方案
 
-Give `MouseMotionFilter` separate horizontal and vertical sensitivities:
+为 `MouseMotionFilter` 分别设置水平和垂直灵敏度：
 
-- Horizontal output remains `-gz * (4 / 250)`.
-- Vertical output becomes `-gy * (8 / 250)`.
-- Fractional residual accumulation, HID clamping, reset behavior, BLE reporting cadence, and MPU sampling remain unchanged.
+- 水平输出保持为 `-gz * (4 / 250)`。
+- 垂直输出改为 `-gy * (8 / 250)`。
+- 小数余量累积、HID 限幅、复位行为、BLE 上报节奏和 MPU 采样方式均保持不变。
 
-The vertical gain starts at twice the horizontal gain because the measured vertical travel is approximately half the horizontal travel. This is an empirical device calibration and can be adjusted later without affecting the horizontal axis.
+由于实测垂直移动距离约为水平的一半，垂直增益初始设为水平的两倍。这属于针对当前设备的经验校准，后续可以在不影响水平轴的情况下单独调整。
 
-## Alternatives Considered
+## 备选方案
 
-1. Flip Y only at `Mouse.move()`. This corrects direction but leaves the unequal travel unresolved and scatters coordinate policy across two components.
-2. Increase one shared sensitivity. This changes horizontal movement that the user already considers acceptable.
-3. Use independent axis gains in `MouseMotionFilter` (selected). This keeps direction and scaling at the conversion boundary and isolates future calibration.
+1. 只在 `Mouse.move()` 调用处翻转 Y。可以修正方向，但不能解决移动距离不一致的问题，而且会把坐标映射规则分散在两个组件中。
+2. 提高统一灵敏度。会同时改变用户已经认为合适的水平移动。
+3. 在 `MouseMotionFilter` 中使用独立轴增益（选定）。方向和缩放都集中在转换边界，后续也能单独校准任一轴。
 
-## Interface and Data Flow
+## 接口与数据流
 
-`MouseMotionFilter` accepts separate X and Y sensitivity values at construction. `update(gy, gz)` applies the corresponding sign and gain before accumulating fractional residuals. The existing caller continues to pass the resulting signed HID delta directly to `Mouse.move(x, y)`.
+构造 `MouseMotionFilter` 时分别传入 X、Y 灵敏度。`update(gy, gz)` 在累积小数余量前应用对应的方向和增益。现有调用方继续把计算得到的有符号 HID 位移直接传给 `Mouse.move(x, y)`。
 
-## Testing
+## 测试
 
-Board tests will first be changed to require:
+首先修改板载测试，使其要求：
 
-- Positive `gy` produces negative Y output.
-- The configured Y gain can produce twice the magnitude of X for equal raw inputs.
-- Existing accumulation, clamping, and reset behavior still work.
+- 正 `gy` 产生负 Y 输出。
+- 对相同原始输入，配置后的 Y 输出幅度可以达到 X 的两倍。
+- 现有小数累积、限幅和复位行为保持正常。
 
-The changed test must fail against the current implementation before production code is changed. After implementation, all board tests must pass, the formal firmware must compile, and the resulting firmware must upload successfully to COM7.
+修改后的测试必须先在当前实现上失败，之后才能修改生产代码。实现完成后，所有板载测试必须通过，正式固件必须编译成功，并成功烧录到 COM7。
 
-## Scope
+## 范围
 
-This change does not alter MPU offsets, DMP configuration, BLE report frequency, button behavior, or horizontal sensitivity. Physical feel after flashing remains the final validation; if the approximate two-times calibration is imperfect, only the Y gain will be tuned in a later iteration.
+本次不修改 MPU 偏移量、DMP 配置、BLE 上报频率、按键行为或水平灵敏度。烧录后的实机手感是最终验收依据；如果两倍这一近似校准仍不准确，后续只调整 Y 增益。
